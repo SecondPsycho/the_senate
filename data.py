@@ -135,6 +135,10 @@ class NewGame():
         if self.decksize == 0:
             self.new_deck()
         return card
+    def giveCard(self, player):
+        card = self.drawcard()
+        player.giveCard(card)
+        return "Gave " + Cards[card] + " to " + player.name + "."
     def save(self, filename):
         memory.save(filename, self)
     def load(self, filename):

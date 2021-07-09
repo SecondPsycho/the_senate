@@ -103,9 +103,9 @@ async def Join(Game, message, data):
         data[2] = message.content.split(' ')[2]
         if message.author.name == Narrator:
             player = Game.getPlayer(data[2])
-            if player == '':
-                Game.pn += 1
+            if player == '':                
                 Game.addPlayer(data[2], message.channel.name, 'None', ' ', 0, Game.pn)
+                Game.pn += 1
                 await message.channel.send('Thank you! Player "'+data[2]+'" is joined in the '+message.channel.name+' chatroom.')
             elif player.chatroom != message.channel.name:
                 player.chatroom = message.channel.name
@@ -233,6 +233,7 @@ async def play_card(Game, message, player, data, card):
         else:
             target = Game.findPlayer(data[2])
         if target != '':
+            print("    Action:", [player.ID,card+player.color,target.ID])
             player.actions.append([player.ID,card+player.color,target.ID])
             if card == 20:
                 await message.channel.send("Preparing to offer a tax to "+target.name+".")
@@ -391,8 +392,15 @@ async def Discard(Game, message, data):
         else:
             await message.channel.send('Unable to identify "'+data[2]+'" as an action.')
             return
-        await message.channel.send('Discarding a '+Colors[cardtype%10]+" "+Actions[int(cardtype/10)]+" card.")
-        player.actions.append([player.ID,0,cardtype])
+        card_count = 0
+        for action in player.actions:
+            if action[1] == 0 and action[2] == cardtype:
+                card_count += 1
+        if card_count >= player.hand.count(cardtype):
+            await message.channel.send('You cannot discard any more '+Colors[cardtype%10]+" "+Actions[int(cardtype/10)]+' cards.')
+        else:
+            await message.channel.send('Discarding a '+Colors[cardtype%10]+" "+Actions[int(cardtype/10)]+" card.")
+            player.actions.append([player.ID,0,cardtype])
     else:
         await message.channel.send('Unrecognized use of the "!discard" command.')
         await message.channel.send(doc.help_discard)
@@ -452,7 +460,8 @@ async def Start(Game, client, message, data):
         elif data[1] == 'night':
             if not Game.NIGHT:
                 await message.channel.send('The Night Cycle has Begun.')
-                report = "**VOTING IS CLOSED.**\n"
+                await message.channel.send('**VOTING IS CLOSED.**')
+                report = ""
                 tally = [0]*Game.pn
                 for player in Game.Players:
                     report += '**' + player.name + ' voted for: '
@@ -488,18 +497,56 @@ async def Start(Game, client, message, data):
             else:
                 await message.channel.send('It is already night.')
         elif data[1] == 'day':
+            master_channel = client.get_channel(Channels['narrator-musings'])
             if Game.NIGHT:
                 await message.channel.send('The Day Cycle has Begun.')
                 report = "Here's the Nightly Report:\n"
                 for player in Game.Players:
                     report += player.name + ':\n' + player.printableActions() + '\n'
-                await message.channel.send(report)
+                await send_large_message(master_channel, report)
+                
                 Game.startDay()
                 Game.save('day')
             else:
                 await message.channel.send('It is already day.')
         else:
             await message.channel.send('Unrecognized use of the "!start" command.')
+    else:
+        await message.channel.send("Only the Narrator can use that command.")
+
+async def send_large_message(master_channel, report):
+    if len(report) < 2000:
+        await master_channel.send(report)
+    else:
+        precut = 0
+        postcut = 0
+        for i in range((len(report)//1000)):
+            postcut = report[900+(1000*i):1100+(1000*i)].index("\n.") + 900 + (i*1000)
+            await master_channel.send(report[precut:postcut])
+            precut = postcut
+        await master_channel.send(report[precut:])
+
+async def Award(Game, message, data):
+    if message.author.name == Narrator:
+        len_data = len(data)
+        if len_data == 2 or len_data == 3:
+            player = Game.findPlayer(data[1])
+            if player == '':
+                await message.channel.send("Could not find player \"" + data[1] + "\".")
+                return
+            count = 1
+            if len_data == 3:
+                try:
+                    count = abs(int(data[2]))
+                except:
+                    await message.channel.send('"'+data[3]+'" is not a valid integer.')
+                    return
+            return_message = ""
+            for i in range(count):
+                return_message += Game.giveCard(player) + '\n'
+            await message.channel.send(return_message)
+        else:
+            await message.channel.send('Unrecognized use of the "!award" command.')
     else:
         await message.channel.send("Only the Narrator can use that command.")
 
@@ -675,6 +722,8 @@ class MyClient(discord.Client):
                 
                 elif data[0] == '!start':
                     await Start(Game, self, message, data)
+                elif data[0] == '!award':
+                    await Award(Game, message, data)
                 elif data[0] == '!save':
                     await Save(Game, message, data)
                 elif data[0] == '!load':
