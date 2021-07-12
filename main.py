@@ -104,7 +104,7 @@ async def Join(Game, message, data):
         if message.author.id == NARRATOR:
             player = Game.getPlayer(data[2])
             if player == '':                
-                Game.addPlayer(data[2], message.channel.name, 'None', ' ', 0, Game.pn)
+                Game.addPlayer(data[2], message.channel.name, 'None', ' ', '0', Game.pn)
                 Game.pn += 1
                 await message.channel.send('Thank you! Player "'+data[2]+'" is joined in the '+message.channel.name+' chatroom.')
             elif player.chatroom != message.channel.name:
@@ -265,12 +265,12 @@ async def Play(Game, message, data):
             if data[1] == Colors[player.color]:
                 data.pop(1)
                 len_data -= 1
-            elif len(player.actions) == 0:
+            elif len(player.actions) != 0:
                     await message.channel.send("Your color is set to "+Colors[player.color]+", and you have actions listed.")
                     return
             else:
                 player.color = Colors.index(data[1])
-                await message.channel.send('Your color for the night has been sent to "'+data[1]+'"')
+                await message.channel.send('Your color for the night has been set to '+data[1]+'.')
                 data.pop(1)
                 len_data -= 1
     if len_data == 4 and data[2] == 'on':
@@ -531,10 +531,10 @@ async def Start(Game, client, message, data):
                                 count += 1
                         if count >= 1:
                             stabbed = True
-                            report += "<@!" +str(player.discordID)+ "> played "
+                            report += player.discordID+ " played "
                             for i in range(count):
                                 report +=  Cards[10] + ' '
-                            report += "on <@!" + str(target.discordID) + ">.\n"
+                            report += "on " + target.discordID + ".\n"
                     for player in Game.Players:
                         count = 0
                         for action in player.actions:
@@ -542,38 +542,39 @@ async def Start(Game, client, message, data):
                                 health += 1
                                 count += 1
                         if count >= 1 and stabbed:
-                            report += "<@!" +str(player.discordID)+ "> played "
+                            report += player.discordID+ " played "
                             for i in range(count):
                                 report +=  Cards[30] + ' '
-                            report += "on <@!" + str(target.discordID) + ">.\n"
+                            report += "on " + target.discordID + ".\n"
                     if stabbed and target.shields > 0:
-                        report += "<@!" + str(target.discordID) + "> carried "
+                        report += target.discordID + " carried "
                         for i in range(target.shields):
                             report += Cards[30] + ' '
                             health += 1
                         report += "from last Night.\n"
                     if health < 0:
                         target.shields = 0
-                        if stabbed:
-                            report += "<@!" + str(target.discordID) + "> takes " + str(-health) + " damage"
-                            if target.lives + health <= 0:
-                                report += " and Dies"
-                                target.electable = 0
-                            report += ".\n"
                         target.lives += health
+                        if stabbed:
+                            report += target.discordID + " takes " + str(-health) + " damage"
+                            if target.lives <= 0:
+                                report += " and Dies"
+                                target.dies()
+                            report += ".\n"
+                        
                     elif health >= 2:
                         target.shields = health - 1
                         if stabbed:
-                            report += "<@!" + str(target.discordID) + "> takes no damage and carries "
+                            report += target.discordID + " takes no damage and carries "
                         else:
-                            report += "<@!" + str(target.discordID) + "> carries "
+                            report += target.discordID + " carries "
                         for i in range(health-1):
                             report += Cards[30] + ' '
                         report += "to the next Night.\n"
                     else:
                         target.shields = 0
                         if stabbed:
-                            report += "<@!" + str(target.discordID) + "> takes no damage.\n"
+                            report += target.discordID + " takes no damage.\n"
                     if report != "":
                         report += ".\n"
                         await send_large_message(log_channel, report, ".\n")
@@ -606,6 +607,13 @@ async def Award(Game, message, data):
             player = Game.findPlayer(data[1])
             if player == '':
                 await message.channel.send("Could not find player \"" + data[1] + "\".")
+                return
+            if player.lives <= 0:
+                if len_data == 2:
+                    await message.channel.send("Gave " + Cards[10] + " to " + player.name + ".")
+                    player.giveCard(10)
+                else:
+                    await message.channel.send("Cannot award multiple cards to Dead Players.")
                 return
             count = 1
             if len_data == 3:
@@ -745,11 +753,9 @@ async def Exit(Game, message, data):
 async def Test(Game, message, data, client):
     for player in Game.Players:
         if player.discordID != 0:
-            await client.get_channel(Channels[player.chatroom]).send('<@'+str(player.discordID)+'> Dinner is Ready.')
+            await client.get_channel(Channels[player.chatroom]).send(player.discordID + ' Dinner is Ready.')
         else:
             await message.channel.send(player.name+' has no listed DiscordID.')
-
-Message = ""
 
 class MyClient(discord.Client):
     async def on_ready(self):
@@ -763,8 +769,6 @@ class MyClient(discord.Client):
         except:
             await musings.send('Game Loading Failed. Loaded a New Game.')
     async def on_message(self, message):
-        global Message
-        Message = message
         if message.author == client.user:
                 return
         elif message.content.startswith('!'):
@@ -777,8 +781,8 @@ class MyClient(discord.Client):
                         player.nick = str(message.author.nick)
                     if player.disc == ' ':
                         player.disc = message.author.discriminator
-                    if player.discordID == 0:
-                        player.discordID = message.author.id
+                    if player.discordID[0:2] != "<@!":
+                        player.discordID = "<@!" + str(message.author.id) + ">"
                 elif Game.ON and message.author.id != NARRATOR:
                     await message.channel.send("Seems you're not listed as a Player... contact Gen_CAT if you feel this should be different.")
                     return

@@ -22,7 +22,7 @@ def save(filename, Game):
         File.write(player.nick+'\n')
         File.write(player.chatroom+'\n')
         File.write(player.disc+'\n')
-        File.write(str(player.discordID)+'\n')
+        File.write(player.discordID+'\n')
         File.write(str(player.team)+' '+str(player.color)+' '+str(player.lives)+' '+str(player.shields)+'\n')
         File.write(str(player.discard)+' '+str(player.electable)+'\n')
         File.write(str(player.handsize)+'\n')
@@ -71,7 +71,7 @@ def load(filename, Game):
                        room[:len(room)-1],
                        nick[:len(nick)-1],
                        disc[:len(disc)-1],
-                       int(discordID),
+                       discordID[:len(discordID)-1],
                        i)
         player = Game.Players[-1]
         line = File.readline().split(' ')

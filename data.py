@@ -67,11 +67,13 @@ class NewGame():
                                    message.channel.name,
                                    message.author.nick,
                                    message.author.discriminator,
-                                   message.author.id,
+                                   "<@!" + str(message.author.id) + ">",
                                    self.pn))
         self.pn += 1
         return True
     def addPlayer(self, name, room, nick, disc, discordID, ID):
+        if discordID == '0':
+            discordID = '@' + name
         self.Players.append(Player(self,name,room,nick,disc,discordID,ID))
     def getPlayer(self,name):
         for player in self.Players:
@@ -210,13 +212,13 @@ class NewGame():
 
 
 class Player():
-    def __init__(self,Game,name,chatroom,nick,disc,discordID,ID):
+    def __init__(self,Game,name,chatroom,nick,disc,pdiscordID,ID):
         self.Game = Game
         self.name = name
         self.nick = str(nick)
         self.chatroom = chatroom
         self.disc = disc
-        self.discordID = discordID
+        self.discordID = pdiscordID
         self.ID = ID
 
         self.team = 0
@@ -254,7 +256,7 @@ class Player():
         for action in self.actions:
             if action[1] == 0:
                 discard_count += 1
-            else:
+            elif action[0] % 10 != 0:
                 played_count += 1
         if (played_count-discard_count) > 0:
             return True
@@ -276,6 +278,14 @@ class Player():
                 cards += Cards[action[1]] + " on "+self.Game.Players[action[2]].name+'.'
             cards += '\n'
         return cards
+    def dies(self):
+        self.electable = 0
+        self.color = 0
+        self.handsize = 2
+        self.lives = 0
+        self.hand = [0]*20
+        self.hand[0] = 10
+        self.hand[1] = 10
 
 """
 Game = NewGame()
