@@ -22,8 +22,8 @@ def save(filename, Game):
         File.write(player.nick+'\n')
         File.write(player.chatroom+'\n')
         File.write(player.disc+'\n')
-        File.write(str(player.tag)+'\n')
-        File.write(str(player.team)+' '+str(player.lives)+' '+str(player.color)+'\n')
+        File.write(str(player.discordID)+'\n')
+        File.write(str(player.team)+' '+str(player.color)+' '+str(player.lives)+' '+str(player.shields)+'\n')
         File.write(str(player.discard)+'\n')
         File.write(str(player.handsize)+'\n')
         for card in player.hand:
@@ -66,18 +66,19 @@ def load(filename, Game):
         nick = File.readline()
         room = File.readline()
         disc = File.readline()
-        tag = File.readline()
+        discordID = File.readline()
         Game.addPlayer(name[:len(name)-1],
                        room[:len(room)-1],
                        nick[:len(nick)-1],
                        disc[:len(disc)-1],
-                       int(tag),
+                       int(discordID),
                        i)
         player = Game.Players[-1]
         line = File.readline().split(' ')
         player.team = int(line[0])
-        player.lives = int(line[1])
-        player.color = int(line[2])
+        player.color = int(line[1])
+        player.lives = int(line[2])
+        player.shields = int(line[3])
         player.discard = int(File.readline())
         player.handsize = int(File.readline())
         line = File.readline().split(' ')

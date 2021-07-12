@@ -7,23 +7,27 @@ import memory
 
 Cards = {
     0 : '',
+    10 : '<:knife:743884188872343582>',
     11 : '<:knifeR:743884189044310046>',
     12 : '<:knifeG:743884188817817711>',
     13 : '<:knifeB:743884188784132256>',
+    20 : '<:coins:815407486789091339>',
     21 : '<:coinsR:815407541349122048>',
     22 : '<:coinsG:815407486404001802>',
     23 : '<:coinsB:815407485958488065>',
+    30 : '<:guard:743884188775743569>',
     31 : '<:guardR:743884188704440440>',
     32 : '<:guardG:743884188687663146>',
     33 : '<:guardB:743884188305981481>'
 }
 
-Colors = ['','red','green','blue']
-Actions = ['','murder','tax','guard']
+Colors = ['colorless','red','green','blue']
+Actions = ['colorless','murder','tax','guard']
 
 Channels = {
     'bot-tests' : 812334133551431741,
-    'narrator-musings' : 743890837653553232,
+    'bot-commands' : 743890837653553232,
+    'senate-log' : 743890081953218580,
     'island-palace' : 743897238476161036,
     'arctic-palace' : 743891278793801878,
     'mountain-palace' : 743891354412908626,
@@ -43,13 +47,13 @@ Channels = {
 class NewGame():
     def __init__(self):
         self.ON = False
-        self.NIGHT = False
+        self.NIGHT = True
         self.new_deck()
         self.pn = 0
         self.Players = []
     def reset(self):
         self.ON = False
-        self.NIGHT = False
+        self.NIGHT = True
         self.new_deck()
         self.pn = 0
         self.Players = []
@@ -66,8 +70,8 @@ class NewGame():
                                    self.pn))
         self.pn += 1
         return True
-    def addPlayer(self, name, room, nick, disc, tag, ID):
-        self.Players.append(Player(self,name,room,nick,disc,tag,ID))
+    def addPlayer(self, name, room, nick, disc, discordID, ID):
+        self.Players.append(Player(self,name,room,nick,disc,discordID,ID))
     def getPlayer(self,name):
         for player in self.Players:
             if player.name == name:
@@ -151,8 +155,22 @@ class NewGame():
             player.discard = 0
         for player in self.Players:
             player.votes = [-1,-1,-1]
+            """
             while (len(player.actions) > 0 and player.actions[-1][1] == 0):
                 player.actions.pop(-1)
+            #"""
+            discards = 1
+            for action in player.actions:
+                if action[1] == 0:
+                    discards += 1
+                else:
+                    discards -= 1
+            for i in range(len(player.actions)-1,-1,-1):
+                if discards <= 0:
+                    break
+                else:
+                    if player.actions[i][1] == 0:
+                        player.actions.pop(i)
             for action in player.actions:
                 if action[1] == 0:
                     player.discardCard(action[2])
@@ -186,17 +204,18 @@ class NewGame():
 
 
 class Player():
-    def __init__(self,Game,name,chatroom,nick,disc,tag,ID):
+    def __init__(self,Game,name,chatroom,nick,disc,discordID,ID):
         self.Game = Game
         self.name = name
         self.nick = str(nick)
         self.chatroom = chatroom
         self.disc = disc
-        self.tag = tag
+        self.discordID = discordID
         self.ID = ID
 
         self.team = 0
         self.lives = 3
+        self.shields = 0
 
         self.handsize = 0
         self.hand = [0]*20

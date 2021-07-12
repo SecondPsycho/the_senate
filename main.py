@@ -16,7 +16,7 @@ def one_line(data):
     data = data.split('\n')
     return data[0]
 
-Narrator = 'Gen_CAT'
+NARRATOR = 249679490429485057
 
 #"""
 #Individual Command Functions
@@ -49,7 +49,7 @@ async def Help(Game, message, data):
 async def Draw(Game, message, data):
     len_data = len(data)
     if len_data < 3:
-        if not Game.ON or message.author.name == Narrator:
+        if not Game.ON or message.author.id == NARRATOR:
             if len_data < 2:
                 num_cards = 3
             else:
@@ -101,7 +101,7 @@ async def Join(Game, message, data):
                 await message.channel.send('This was already your chatroom.')
     elif len_data == 3 and data[1] == 'player':
         data[2] = message.content.split(' ')[2]
-        if message.author.name == Narrator:
+        if message.author.id == NARRATOR:
             player = Game.getPlayer(data[2])
             if player == '':                
                 Game.addPlayer(data[2], message.channel.name, 'None', ' ', 0, Game.pn)
@@ -129,7 +129,7 @@ async def Unjoin(Game, message, data):
         else:
             await message.channel.send("You were already out of the game.")
     elif len_data == 3 and data[1] == 'player':
-        if message.author.name == Narrator:
+        if message.author.id == NARRATOR:
             player = Game.findPlayer(data[2])
             if player == '':
                 await message.channel.send('No player "'+data[2]+'" to remove.')
@@ -233,7 +233,6 @@ async def play_card(Game, message, player, data, card):
         else:
             target = Game.findPlayer(data[2])
         if target != '':
-            print("    Action:", [player.ID,card+player.color,target.ID])
             player.actions.append([player.ID,card+player.color,target.ID])
             if card == 20:
                 await message.channel.send("Preparing to offer a tax to "+target.name+".")
@@ -447,35 +446,37 @@ async def Vote(Game, message, data):
         await message.channel.send(doc.help_vote)
 
 async def Start(Game, client, message, data):
-    if message.author.name == Narrator:
+    log_channel = client.get_channel(Channels['senate-log'])
+    if message.author.id == NARRATOR:
         if data[1] == 'game':
             if Game.ON:
                 await message.channel.send("The Game has already started.")
             else:
-                Game.deal(3)
+                Game.deal(4)
                 Game.ON = True
                 await message.channel.send("Let the Games Begin.")
         elif not Game.ON:
             await message.channel.send('The game has not Started.')
         elif data[1] == 'night':
             if not Game.NIGHT:
-                await message.channel.send('The Night Cycle has Begun.')
-                await message.channel.send('**VOTING IS CLOSED.**')
-                report = ""
+                Game.save('day')
+                await log_channel.send('The Night Cycle has Begun.')
+                report = '**VOTING IS CLOSED.**\n'
                 tally = [0]*Game.pn
                 for player in Game.Players:
-                    report += '**' + player.name + ' voted for: '
-                    if player.votes[0] == -1:
-                        report += 'nobody'
-                    else:
-                        report += Game.Players[player.votes[0]].name
-                        tally[player.votes[0]] += 1
-                        for vote in player.votes[1:]:
-                            if vote != -1:
-                                report += ' & ' + Game.Players[vote].name
-                                tally[vote] += 1
-                    report += '.**\n'
-                await message.channel.send(report)
+                    if player.lives > 0:
+                        report += '**' + player.name + ' voted for: '
+                        if player.votes[0] == -1:
+                            report += 'nobody'
+                        else:
+                            report += Game.Players[player.votes[0]].name
+                            tally[player.votes[0]] += 1
+                            for vote in player.votes[1:]:
+                                if vote != -1:
+                                    report += ' & ' + Game.Players[vote].name
+                                    tally[vote] += 1
+                        report += '.**\n'
+                await log_channel.send(report)
                 high = 0
                 index = -1
                 report = '**FINAL TALLY:**\n'
@@ -491,22 +492,81 @@ async def Start(Game, client, message, data):
                     report += '**Vote is Tied.**'
                 else:
                     report += '**'+Game.Players[index].name+' is Elected.**'
-                await message.channel.send(report)
+                await log_channel.send(report)
                 Game.startNight()
-                Game.save('night')
             else:
                 await message.channel.send('It is already night.')
         elif data[1] == 'day':
-            master_channel = client.get_channel(Channels['narrator-musings'])
+            master_channel = client.get_channel(Channels['bot-commands'])
             if Game.NIGHT:
-                await message.channel.send('The Day Cycle has Begun.')
+                Game.save('night')
+                await log_channel.send('The Day Cycle has Begun.')
                 report = "Here's the Nightly Report:\n"
                 for player in Game.Players:
                     report += player.name + ':\n' + player.printableActions() + '\n'
-                await send_large_message(master_channel, report)
+                await send_large_message(master_channel, report, "\n.")
+
+                for i in range(Game.pn):
+                    target = Game.Players[i]
+                    health = 0
+                    stabbed = False
+                    report = ""
+                    for player in Game.Players:
+                        count = 0
+                        for action in player.actions:
+                            if action[1] in [10,11,12,13] and action[2] == target.ID:
+                                health -= 1
+                                count += 1
+                        if count >= 1:
+                            stabbed = True
+                            report += "<@!" +str(player.discordID)+ "> played "
+                            for i in range(count):
+                                report +=  Cards[10] + ' '
+                            report += "on <@!" + str(target.discordID) + ">.\n"
+                    for player in Game.Players:
+                        count = 0
+                        for action in player.actions:
+                            if action[1] in [30,31,32,33] and action[2] == target.ID:
+                                health += 1
+                                count += 1
+                        if count >= 1 and stabbed:
+                            report += "<@!" +str(player.discordID)+ "> played "
+                            for i in range(count):
+                                report +=  Cards[30] + ' '
+                            report += "on <@!" + str(target.discordID) + ">.\n"
+                    if stabbed and target.shields > 0:
+                        report += "<@!" + str(target.discordID) + "> carried "
+                        for i in range(target.shields):
+                            report += Cards[30] + ' '
+                            health += 1
+                        report += "from last Night.\n"
+                    if health < 0:
+                        target.shields = 0
+                        if stabbed:
+                            report += "<@!" + str(target.discordID) + "> takes " + str(-health) + " damage"
+                            if target.lives + health <= 0:
+                                report += " and Dies"
+                            report += ".\n"
+                        target.lives += health
+                    elif health >= 2:
+                        target.shields = health - 1
+                        if stabbed:
+                            report += "<@!" + str(target.discordID) + "> takes no damage and carries "
+                        else:
+                            report += "<@!" + str(target.discordID) + "> carries "
+                        for i in range(health-1):
+                            report += Cards[30] + ' '
+                        report += "to the next Night.\n"
+                    else:
+                        target.shields = 0
+                        if stabbed:
+                            report += "<@!" + str(target.discordID) + "> takes no damage.\n"
+                    if report != "":
+                        report += ".\n"
+                        await send_large_message(log_channel, report, ".\n")
+                    
                 
                 Game.startDay()
-                Game.save('day')
             else:
                 await message.channel.send('It is already day.')
         else:
@@ -514,20 +574,20 @@ async def Start(Game, client, message, data):
     else:
         await message.channel.send("Only the Narrator can use that command.")
 
-async def send_large_message(master_channel, report):
+async def send_large_message(master_channel, report, cutter):
     if len(report) < 2000:
         await master_channel.send(report)
     else:
         precut = 0
         postcut = 0
         for i in range((len(report)//1000)):
-            postcut = report[900+(1000*i):1100+(1000*i)].index("\n.") + 900 + (i*1000)
+            postcut = report[900+(1000*i):1100+(1000*i)].index(cutter) + 900 + (i*1000)
             await master_channel.send(report[precut:postcut])
             precut = postcut
         await master_channel.send(report[precut:])
 
 async def Award(Game, message, data):
-    if message.author.name == Narrator:
+    if message.author.id == NARRATOR:
         len_data = len(data)
         if len_data == 2 or len_data == 3:
             player = Game.findPlayer(data[1])
@@ -551,7 +611,7 @@ async def Award(Game, message, data):
         await message.channel.send("Only the Narrator can use that command.")
 
 async def Save(Game, message, data):
-    if message.author.name == Narrator:
+    if message.author.id == NARRATOR:
         len_data = len(data)
         if len_data == 1:
             Game.save('manual')
@@ -565,7 +625,7 @@ async def Save(Game, message, data):
         await message.channel.send("Only the Narrator can use that command.")
 
 async def Load(Game, message, data):
-    if message.author.name == Narrator:
+    if message.author.id == NARRATOR:
         len_data = len(data)
         if len_data == 2:
             if data[1] == 'new':
@@ -585,7 +645,7 @@ async def Load(Game, message, data):
 
 result = 'No result.'
 async def Report(Game, message, data):
-    if message.author.name == Narrator:
+    if message.author.id == NARRATOR:
         if len(data) > 1:
             try:
                 report = message.content[8:]
@@ -602,11 +662,10 @@ async def Report(Game, message, data):
         else:
             await message.channel.send('Unrecognized use of the "!report" command.')
     else:
-        await message.channel.send("Only "+Narrator+" can run the '!report' command.")
+        await message.channel.send("Only <@!"+str(NARRATOR)+"> can run the '!report' command.")
 
 async def Control(Game, message, data):
-    print('control')
-    if message.author.name == Narrator:
+    if message.author.id == NARRATOR:
         len_data = len(data)
         if len_data == 4 and (data[1] == 'give' or data[1] == 'take'):
             target = Game.findPlayer(data[2])
@@ -646,13 +705,24 @@ async def Control(Game, message, data):
                     await message.channel.send(str(lives)+" is too many.")
             except:
                 await message.channel.send('"'+data[3]+'" is not a valid integer.')
+        elif len_data == 4 and data[1] == 'shields':
+            target = Game.findPlayer(data[2])
+            if target == '':
+                await message.channel.send("Couldn't find player"+' "'+data[2]+'"')
+                return
+            try:
+                shields = abs(int(data[3]))
+                target.shields = shields
+                await message.channel.send("Set "+target.name+"'s shields to "+str(shields)+'.')
+            except:
+                await message.channel.send('"'+data[3]+'" is not a valid integer.')
         else:
             await message.channel.send('Unrecognized use of the "!control" command.')
     else:
         await message.channel.send("Only the Narrator can use that command.")
 
 async def Exit(Game, message, data):
-    if message.author.name == Narrator:
+    if message.author.id == NARRATOR:
         await message.channel.send("Goodbye!")
         Game.save('exit')
         exit(0)
@@ -661,15 +731,17 @@ async def Exit(Game, message, data):
 
 async def Test(Game, message, data, client):
     for player in Game.Players:
-        if player.tag != 0:
-            await client.get_channel(Channels[player.chatroom]).send('<@'+str(player.tag)+'> Dinner is Ready.')
+        if player.discordID != 0:
+            await client.get_channel(Channels[player.chatroom]).send('<@'+str(player.discordID)+'> Dinner is Ready.')
         else:
-            await message.channel.send(player.name+' has no listed tag.')
+            await message.channel.send(player.name+' has no listed DiscordID.')
+
+Message = ""
 
 class MyClient(discord.Client):
     async def on_ready(self):
         print('Logged on as {0}!'.format(self.user))
-        #musings = self.get_channel(Channels['narrator-musings'])
+        #musings = self.get_channel(Channels['bot-commands'])
         musings = self.get_channel(Channels['bot-tests'])
         await musings.send('Bot is Online.')
         try:
@@ -678,6 +750,8 @@ class MyClient(discord.Client):
         except:
             await musings.send('Game Loading Failed. Loaded a New Game.')
     async def on_message(self, message):
+        global Message
+        Message = message
         if message.author == client.user:
                 return
         elif message.content.startswith('!'):
@@ -690,9 +764,9 @@ class MyClient(discord.Client):
                         player.nick = str(message.author.nick)
                     if player.disc == ' ':
                         player.disc = message.author.discriminator
-                    if player.tag == 0:
-                        player.tag = message.author.id
-                elif Game.ON and message.author.name != Narrator:
+                    if player.discordID == 0:
+                        player.discordID = message.author.id
+                elif Game.ON and message.author.id != NARRATOR:
                     await message.channel.send("Seems you're not listed as a Player... contact Gen_CAT if you feel this should be different.")
                     return
                 
@@ -740,7 +814,7 @@ class MyClient(discord.Client):
                     await message.channel.send("Unrecognized Command.")
                     await Help(Game, message, data)
             else: #except:
-                if message.content == '!exit' and message.author.name == Narrator:
+                if message.content == '!exit' and message.author.id == NARRATOR:
                     exit(0)
                 await message.channel.send("Oops. Something went wrong :(")
                 print("There was a Problem with input:",message.content)
