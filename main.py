@@ -253,8 +253,8 @@ async def Play(Game, message, data):
         await message.channel.send("You can only use this command at night.")
         return
     player = Game.getPlayer(message.author.name)
-    if player.lives <= 0:
-        await message.channel.send("Dead players can't play abilities.")
+    if player.chatroom != message.channel.name:
+        await message.channel.send("You can only use the \"!play\" command in your own chatroom!")
         return
     if player.mustDiscard():
         await message.channel.send("You must discard a card before playing another ability. Use the '!discard' command.")
@@ -317,6 +317,9 @@ async def Discard(Game, message, data):
         await message.channel.send("You can only use this command once the game has started.")
         return
     player = Game.getPlayer(message.author.name)
+    if player.chatroom != message.channel.name:
+        await message.channel.send("You can only use the \"!discard\" command in your own chatroom!")
+        return
     if not Game.NIGHT and len(player.actions) >= player.discard:
         await message.channel.send("You don't have to discard any more cards.")
         return
@@ -429,8 +432,14 @@ async def Vote(Game, message, data):
         await message.channel.send("You can only use this command during the day.")
         return
     player = Game.getPlayer(message.author.name)
-    if player.lives <= 0:
-        await message.channel.send("Dead players can't vote.")
+    if not player.electable:
+        if player.lives <= 0:
+            await message.channel.send("Dead players can't vote.")
+        else:
+            await message.channel.send(player.name + " has already been Consul.")
+        return
+    if message.channel.id != Channels['senate-floor']:
+        await message.channel.send("You may only vote in <#" + str(Channels['senate-floor']) + ">.")
         return
     len_data = len(data)
     if len_data == 2:
@@ -460,6 +469,7 @@ async def Start(Game, client, message, data):
         elif data[1] == 'night':
             if not Game.NIGHT:
                 Game.save('day')
+                await message.channel.send("Starting Night Cycle.")
                 await log_channel.send('The Night Cycle has Begun.')
                 report = '**VOTING IS CLOSED.**\n'
                 tally = [0]*Game.pn
@@ -492,6 +502,7 @@ async def Start(Game, client, message, data):
                     report += '**Vote is Tied.**'
                 else:
                     report += '**'+Game.Players[index].name+' is Elected.**'
+                    Game.Players[index].electable = 0
                 await log_channel.send(report)
                 Game.startNight()
             else:
@@ -500,6 +511,7 @@ async def Start(Game, client, message, data):
             master_channel = client.get_channel(Channels['bot-commands'])
             if Game.NIGHT:
                 Game.save('night')
+                await message.channel.send("Starting Day Cycle.")
                 await log_channel.send('The Day Cycle has Begun.')
                 report = "Here's the Nightly Report:\n"
                 for player in Game.Players:
@@ -546,6 +558,7 @@ async def Start(Game, client, message, data):
                             report += "<@!" + str(target.discordID) + "> takes " + str(-health) + " damage"
                             if target.lives + health <= 0:
                                 report += " and Dies"
+                                target.electable = 0
                             report += ".\n"
                         target.lives += health
                     elif health >= 2:

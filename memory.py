@@ -24,7 +24,7 @@ def save(filename, Game):
         File.write(player.disc+'\n')
         File.write(str(player.discordID)+'\n')
         File.write(str(player.team)+' '+str(player.color)+' '+str(player.lives)+' '+str(player.shields)+'\n')
-        File.write(str(player.discard)+'\n')
+        File.write(str(player.discard)+' '+str(player.electable)+'\n')
         File.write(str(player.handsize)+'\n')
         for card in player.hand:
             File.write(str(card)+' ')
@@ -79,7 +79,9 @@ def load(filename, Game):
         player.color = int(line[1])
         player.lives = int(line[2])
         player.shields = int(line[3])
-        player.discard = int(File.readline())
+        line = File.readline().split(' ')
+        player.discard = int(line[0])
+        player.electable = int(line[0])
         player.handsize = int(File.readline())
         line = File.readline().split(' ')
         for i in range(player.handsize):

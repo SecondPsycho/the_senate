@@ -28,6 +28,7 @@ Channels = {
     'bot-tests' : 812334133551431741,
     'bot-commands' : 743890837653553232,
     'senate-log' : 743890081953218580,
+    'senate-floor' : 742733588683817008,
     'island-palace' : 743897238476161036,
     'arctic-palace' : 743891278793801878,
     'mountain-palace' : 743891354412908626,
@@ -99,17 +100,23 @@ class NewGame():
             return True
     def deal(self, handsize):
         self.new_deck()
-        teams = [0,0]
-        tn = int(self.pn/2)
-        if self.pn % 2 == 1:
+        teams = [0,0,0]
+        tn = int(self.pn/3)
+        neutral = -1
+        neutral2 = -1
+        if self.pn % 3 >= 1:
             neutral = random.randint(0,self.pn-1)
-            self.Players[neutral].team = 2
-        else:
-            neutral = -1
+            self.Players[neutral].team = 3
+            if self.pn % 3 == 2:
+                neutral2 = random.randint(0,self.pn-1)
+                while neutral2 == neutral:
+                    neutral2 = random.randint(0,self.pn-1)
+                self.Players[neutral2].team = 3
+            
         for i in range(self.pn):
-            if i == neutral:
+            if i == neutral or i == neutral2:
                 continue
-            t = random.randint(0,1)
+            t = random.randint(0,2)
             self.Players[i].team = t
             teams[t] += 1
             if teams[t] == tn:
@@ -179,7 +186,6 @@ class NewGame():
                     target.discard += 1
                     target.giveCard(self.drawcard())
                     target.giveCard(self.drawcard())
-                #Deal with Shields and Stabs later
             player.actions = []
         return True
     def startNight(self):
@@ -214,15 +220,16 @@ class Player():
         self.ID = ID
 
         self.team = 0
+        self.color = -1
         self.lives = 3
         self.shields = 0
 
+        self.discard = 0
+        self.electable = 1
+
         self.handsize = 0
         self.hand = [0]*20
-
         self.votes = [-1,-1,-1]
-        self.color = -1
-        self.discard = 0
         self.actions = []
     def giveCard(self, card):
         if self.handsize == 20:
