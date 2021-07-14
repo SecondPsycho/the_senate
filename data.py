@@ -251,7 +251,7 @@ class Player():
         for action in self.actions:
             if action[1] == 0:
                 discard_count += 1
-            elif action[0] % 10 != 0:
+            elif action[1] % 10 != 0:
                 played_count += 1
         if (played_count-discard_count) > 0:
             return True

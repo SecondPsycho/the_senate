@@ -49,7 +49,7 @@ help_set = """
 """
 
 help_play = """
-    !play [<color>] <ability> [[on] <target>]
+    !play [<color>] <ability> [[on] <target>] [<num>]
         Play an ability card.
         [<color>]:
             Entirely unnecessarily. Will use your set color by Default.
@@ -68,25 +68,30 @@ help_play = """
         <target> can be:
             Any Player's username.
             'me' or 'myself' : Choose yourself as Target.
+        [<num>] can be:
+            A number: specify the number of times to repeat this command.
+            'all' : play all cards available.
         Examples:
             !play tax
             !play blue tax
             !play murder on gen_cat
             !play green knife on gen_cat
             !play """+Cards[33]+""" on me
+            !play shield 2
 """
 
 help_unplay = """
-    !unplay [all]
+    !unplay [<num>]
         Undo the last '!play' command. Can be used multiple times to clear multiple plays.
-        [all]:
-            Clear all plays at once.
+        [<num>] can be:
+            A number: clear <num> of plays.
+            'all' : clear all plays at once.
         Example:
             !unplay
 """
 
 help_discard = """
-    !discard <color> <ability>
+    !discard <color> <ability> [<num>]
         Mark a card to be discarded.
         <color> can be:
             'red' : the card is red.
@@ -96,6 +101,9 @@ help_discard = """
             'murder' or 'knife' : it's a murder card.
             'tax' or 'coin' : it's a tax card.
             'guard' or 'shield' : it's a guard card.
+        [<num>] can be:
+            A number: specify the number of times to repeat this command.
+            'all' : discard all cards available.
         Examples:
             !discard red tax
             !discard blue shield
