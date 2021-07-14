@@ -183,6 +183,15 @@ async def Show(Game, message, data):
                             report += ' & ' + Game.Players[vote].name
                 report += '.'
                 await message.channel.send(report)
+            elif data[1] == "lives" or data[1] == "life":
+                report = "You have "
+                if player.lives == 1:
+                    report += "1 life left."
+                else:
+                    report += str(player.lives) + " lives left."
+                await message.channel.send(report)
+            elif "guard" in data[1] or "shield" in data[1] or "protect" in data[1]:
+                await message.channel.send("You have " + str(player.shields) + " " + Cards[30] +" from last night.")
             else:
                 await message.channel.send('"!show" does not recognize "'+data[1]+'" as a key.')
         else:

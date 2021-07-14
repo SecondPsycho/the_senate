@@ -31,6 +31,8 @@ help_show = """
             'actions' : see the actions you're going to play.
             'color' : see what your color is set to.
             'votes' : see what your votes are set to.
+            'lives' : see how many lives you have left.
+            'guard' : see how many guards you have from last night.
         Example:
             !show hand
 """
