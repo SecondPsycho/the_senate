@@ -1,3 +1,4 @@
+from os import P_NOWAIT
 import random
 import memory
 
@@ -43,6 +44,12 @@ Channels = {
     'volcanic-palace' : 743898898443272255,
     'industrial-palace' : 815592342131179570,
     'graveyard-palace' : 815431320872288306
+}
+
+Roles = {
+    'Alive' : '<@&742733862186123284>',
+    'Narrator' : '<@&742733893710381099>',
+    'Ghost' : '<@&742735450002686043>'
 }
 
 class NewGame():
@@ -102,32 +109,24 @@ class NewGame():
             return True
     def deal(self, handsize):
         self.new_deck()
-        teams = [0,0,0]
-        tn = int(self.pn/3)
-        neutral = -1
-        neutral2 = -1
-        if self.pn % 3 >= 1:
-            neutral = random.randint(0,self.pn-1)
-            self.Players[neutral].team = 3
-            if self.pn % 3 == 2:
-                neutral2 = random.randint(0,self.pn-1)
-                while neutral2 == neutral:
-                    neutral2 = random.randint(0,self.pn-1)
-                self.Players[neutral2].team = 3
-            
+        teams = [-1]*self.pn
+        tn = 3
+        j = 0
+        for i in range((self.pn//3)*3):
+            if j >= tn:
+                j = 0
+            teams[i] = j
+            j += 1
+
+        teams_size = self.pn
         for i in range(self.pn):
-            if i == neutral or i == neutral2:
-                continue
-            t = random.randint(0,2)
+            teams_size -= 1
+            index = random.randint(0,teams_size)
+            t = teams[index]
+            teams[index] = teams[teams_size]
+            teams[teams_size] = 0
             self.Players[i].team = t
-            teams[t] += 1
-            if teams[t] == tn:
-                if teams[0] == tn:
-                    for j in range(i+1,self.pn):
-                        if j == neutral:
-                            continue
-                        self.Players[j].team = 1
-                break
+
         for player in self.Players:
             player.hand[0:handsize] = self.draw(handsize)
             player.handsize = handsize
@@ -164,10 +163,6 @@ class NewGame():
             player.discard = 0
         for player in self.Players:
             player.votes = [-1,-1,-1]
-            """
-            while (len(player.actions) > 0 and player.actions[-1][1] == 0):
-                player.actions.pop(-1)
-            #"""
             discards = 1
             for action in player.actions:
                 if action[1] == 0:
@@ -221,7 +216,7 @@ class Player():
         self.discordID = pdiscordID
         self.ID = ID
 
-        self.team = 0
+        self.team = -1
         self.color = -1
         self.lives = 3
         self.shields = 0

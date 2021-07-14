@@ -17,6 +17,7 @@ def one_line(data):
     return data[0]
 
 NARRATOR = 249679490429485057
+ME = 812330570456760340
 
 #"""
 #Individual Command Functions
@@ -457,15 +458,39 @@ async def Vote(Game, message, data):
 async def Start(Game, client, message, data):
     log_channel = client.get_channel(Channels['senate-log'])
     if message.author.id == NARRATOR:
-        if data[1] == 'game':
+        if len(data) != 2:
+            await message.channel.send('Unrecognized use of the "!start" command.')
+        elif data[1] == 'game':
             if Game.ON:
                 await message.channel.send("The Game has already started.")
+            elif Game.pn < 2:
+                await message.channel.send("There must be at least 2 Players.")
             else:
                 Game.deal(4)
                 Game.ON = True
                 await message.channel.send("Let the Games Begin.")
+                report = "**GAME START**\n"
+                for i in range(Game.pn-2):
+                    report += Game.Players[i].discordID + ", "
+                report += Game.Players[-2].discordID + " & " + Game.Players[-1].discordID + " Playing.\n"
+                report += "<@!" + str(NARRATOR) + "> and <@!" + str(ME) + "> Narrating.\n"
+                report += "There are 3 Teams with " + str(Game.pn//3) + " Players per Team."
+                await log_channel.send(report)
+                for i in range(Game.pn):
+                    player = Game.Players[i]
+                    player_channel = client.get_channel(Channels[player.chatroom])
+                    if player.team == -1:
+                        await player_channel.send(player.discordID + " you are Neutral. Survive to win!")
+                    else:
+                        await player_channel.send(player.discordID + " you are on Team #" + str(player.team+1) + ". Find your Teammates!")
         elif not Game.ON:
             await message.channel.send('The game has not Started.')
+        elif data[1] == 'end':
+            if not Game.ON:
+                await message.channel.send("The Game has not started.")
+            else:
+                await message.channel.send("Ending the Game.")
+                await log_channel.send("**GAME OVER**")
         elif data[1] == 'night':
             if not Game.NIGHT:
                 Game.save('day')
