@@ -81,7 +81,7 @@ def load(filename, Game):
         player.shields = int(line[3])
         line = File.readline().split(' ')
         player.discard = int(line[0])
-        player.electable = int(line[0])
+        player.electable = int(line[1])
         player.handsize = int(File.readline())
         line = File.readline().split(' ')
         for i in range(player.handsize):

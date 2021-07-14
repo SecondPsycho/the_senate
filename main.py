@@ -475,24 +475,30 @@ async def Start(Game, client, message, data):
                 tally = [0]*Game.pn
                 for player in Game.Players:
                     if player.lives > 0:
-                        report += '**' + player.name + ' voted for: '
-                        if player.votes[0] == -1:
-                            report += 'nobody'
-                        else:
-                            report += Game.Players[player.votes[0]].name
-                            tally[player.votes[0]] += 1
-                            for vote in player.votes[1:]:
-                                if vote != -1:
-                                    report += ' & ' + Game.Players[vote].name
-                                    tally[vote] += 1
-                        report += '.**\n'
+                        if player.votes[0] == player.votes[1] == player.votes[2] == -1:
+                            continue
+                        vote = player.votes[0]
+                        count = player.votes.count(vote)
+                        report += player.discordID + " cast " + vote_report(Game, count, vote)
+                        tally[vote] += count
+                        if player.votes[0] != player.votes[1]:
+                            vote = player.votes[1]
+                            count = player.votes.count(vote)
+                            report += " and " + vote_report(Game, count, vote)
+                            tally[vote] += count
+                        if player.votes[2] != player.votes[0] and player.votes[2] != player.votes[1]:
+                            vote = player.votes[2]
+                            count = player.votes.count(vote)
+                            report += " and " + vote_report(Game, count, vote)
+                            tally[vote] += count
+                        report += '.\n'
                 await log_channel.send(report)
                 high = 0
                 index = -1
                 report = '**FINAL TALLY:**\n'
                 for i in range(Game.pn):
                     if tally[i] > 0:
-                        report += '**' + Game.Players[i].name + ': '+str(tally[i])+'**\n'
+                        report += '**' + Game.Players[i].discordID + ': '+str(tally[i])+'**\n'
                         if tally[i] > high:
                             index = i
                             high = tally[i]
@@ -501,7 +507,7 @@ async def Start(Game, client, message, data):
                 if index == -1:
                     report += '**Vote is Tied.**'
                 else:
-                    report += '**'+Game.Players[index].name+' is Elected.**'
+                    report += '**'+Game.Players[index].discordID+' is Elected.**'
                     Game.Players[index].electable = 0
                 await log_channel.send(report)
                 Game.startNight()
@@ -552,16 +558,14 @@ async def Start(Game, client, message, data):
                             report += Cards[30] + ' '
                             health += 1
                         report += "from last Night.\n"
+                    report += "**"
                     if health < 0:
                         target.shields = 0
                         target.lives += health
-                        if stabbed:
-                            report += target.discordID + " takes " + str(-health) + " damage"
-                            if target.lives <= 0:
-                                report += " and Dies"
-                                target.dies()
-                            report += ".\n"
-                        
+                        report += target.discordID + " takes " + str(-health) + " damage"
+                        if target.lives <= 0:
+                            report += " and Dies"
+                            target.dies()
                     elif health >= 2:
                         target.shields = health - 1
                         if stabbed:
@@ -570,13 +574,13 @@ async def Start(Game, client, message, data):
                             report += target.discordID + " carries "
                         for i in range(health-1):
                             report += Cards[30] + ' '
-                        report += "to the next Night.\n"
+                        report += "to the next Night"
                     else:
                         target.shields = 0
                         if stabbed:
-                            report += target.discordID + " takes no damage.\n"
-                    if report != "":
-                        report += ".\n"
+                            report += target.discordID + " takes no damage"
+                    if report != "**":
+                        report += ".**\n.\n"
                         await send_large_message(log_channel, report, ".\n")
                     
                 
@@ -587,6 +591,11 @@ async def Start(Game, client, message, data):
             await message.channel.send('Unrecognized use of the "!start" command.')
     else:
         await message.channel.send("Only the Narrator can use that command.")
+
+def vote_report(Game, count, vote):
+    if count > 1:
+        return str(count) + " votes for " + Game.Players[vote].discordID
+    return str(count) + " vote for " + Game.Players[vote].discordID
 
 async def send_large_message(master_channel, report, cutter):
     if len(report) < 2000:
@@ -658,7 +667,7 @@ async def Load(Game, message, data):
                 except:
                     await message.channel.send('Loading Failed.')
                     return
-                await message.channel.send('Loading Successful!')
+                await message.channel.send('Loaded "'+ data[1] +'.txt"')
         else:
             await message.channel.send('Unrecognized use of the "!load" command.')
     else:
