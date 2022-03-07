@@ -200,42 +200,16 @@ async def Show(Game, message, data):
         await message.channel.send('Unrecognized use of the "!show" command.')
         await message.channel.send(doc.help_show)
 
-async def Set(Game, message, data):
-    if not Game.ON:
-        await message.channel.send("You can only use this command once the game has started.")
-        return
-    if not Game.NIGHT:
-        await message.channel.send("You can only use this command at night.")
-        return
-    player = Game.getPlayer(message.author.name)
-    if player.lives <= 0:
-        await message.channel.send("Dead players can't use this command.")
-        return
-    if len(data) == 3 and data[1] == 'color':
-        for i in range(1,4):
-            if data[2] == Colors[i]:
-                if player.color == i:
-                    await message.channel.send('Your color was already set to '+Colors[i]+'.')
-                else:
-                    player.color = i
-                    await message.channel.send('Your color for the night has been set to '+Colors[i]+'.')
-                    player.actions = []
-                return
-        await message.channel.send('Did not recognize "'+data[2]+'" as a color.')
-    else:
-        await message.channel.send('Unrecognized use of the "!set" command.')
-        await message.channel.send(doc.help_set)
-
 async def play_card(Game, message, player, data, card):
-    card_2d = card+player.color
     if player.color == -1:
-        await message.channel.send("You have not set your color.")
-    elif card_2d in player.hand:
+        player.color = card // 10
+    
+    if card in player.hand:
         playedcount = 0
         for action in player.actions:
-            if action[1] == card_2d:
+            if action[1] == card:
                 playedcount += 1
-        if playedcount >= player.hand.count(card_2d):
+        if playedcount >= player.hand.count(card):
             await message.channel.send('You cannot play that card again.')
             return
         if data[2] == 'me' or data[2] == 'myself':
@@ -243,17 +217,17 @@ async def play_card(Game, message, player, data, card):
         else:
             target = Game.findPlayer(data[2])
         if target != '':
-            player.actions.append([player.ID,card+player.color,target.ID])
-            if card == 20:
+            player.actions.append([player.ID,card,target.ID])
+            if card // 10 == 2:
                 await message.channel.send("Preparing to offer a tax to "+target.name+".")
-            elif card == 10:
+            elif card // 10 == 1:
                 await message.channel.send("Preparing to murder "+target.name+".")
             else:
                 await message.channel.send("Preparing to guard "+target.name+".")
         else:
             await message.channel.send("Couldn't find a Player named "+'"'+data[2]+'" in the game.')
     else:
-        await message.channel.send("You do not have a "+Colors[player.color]+" "+Actions[int(card/10)]+" card.")
+        await message.channel.send("You do not have a "+Cards[card]+" card.")
         
 async def Play(Game, message, data):
     if not Game.ON:
@@ -267,20 +241,8 @@ async def Play(Game, message, data):
         await message.channel.send("You can only use the \"!play\" command in your own chatroom!")
         return
     len_data = len(data)
-    if len_data >= 2:
-        if data[1] == 'red' or data[1] == 'green' or data[1] == 'blue':
-            if data[1] == Colors[player.color]:
-                data.pop(1)
-                len_data -= 1
-            elif len(player.actions) != 0:
-                    await message.channel.send("Your color is set to "+Colors[player.color]+", and you have actions listed.")
-                    return
-            else:
-                player.color = Colors.index(data[1])
-                await message.channel.send('Your color for the night has been set to '+data[1]+'.')
-                data.pop(1)
-                len_data -= 1
-    if len_data >= 4 and data[2] == 'on':
+
+    if data[2] == 'on':
         data.pop(2)
         len_data -= 1
     count = 1
@@ -303,22 +265,29 @@ async def Play(Game, message, data):
         data.append('me')
         len_data += 1
     if len_data == 3:
-        cardType = 0
-        if "murder" in data[1] or "knife" in data[1] or "kill" in data[1] or "stab" in data[1] or data[1] == '1' or data[1] == "10":
-            cardType = 10
-        elif "guard" in data[1] or "shield" in data[1] or "protect" in data[1] or data[1] == '3' or data[1] == '30':
-            cardType = 30
-        elif "tax" in data[1] or "coin" in data[1] or data[1] == '2' or data[1] == '20':
-            cardType = 20
+        card = 0
+        if "murder" in data[1] or "knife" in data[1] or "kill" in data[1] or "stab" in data[1] or "red" in data[1] or data[1] == '1' or data[1] == "10":
+            if player.lives == 0:
+                card = 10
+            else:
+                card = 11
+        elif "guard" in data[1] or "shield" in data[1] or "protect" in data[1] or "blue" in data[1] or data[1] == '3' or data[1] == '30':
+            card = 33
+        elif "tax" in data[1] or "coin" in data[1] or "green" in data[1] or data[1] == '2' or data[1] == '20':
+            card = 22
         else:
             await message.channel.send('"'+data[1]+'" is not a recognized ability.')
             return
+        for action in player.actions:
+            if action[1] != card and action[1] != 0:
+                await message.channel.send("You're already playing a different card.")
+                return
         if all_count:
-            count = player.hand.count(cardType + player.color)
+            count = player.hand.count(card)
         for i in range(count):
             if await must_discard(player, message):
                 break
-            await play_card(Game, message, player, data, cardType)
+            await play_card(Game, message, player, data, card)
         await Show(Game, message, ['!show', 'actions'])
     else:
         await message.channel.send('Unrecognized use of the "!play" command.')
@@ -341,8 +310,8 @@ async def Unplay(Game, message, data):
             await message.channel.send('You have no actions listed.')
         else:
             await message.channel.send('Your last action has been unplayed.')
-            await Show(Game, message, ['!show', 'actions'])
             player.actions.pop(-1)
+            await Show(Game, message, ['!show', 'actions'])
     elif len_data == 2 and data[1] == 'all':
         player = Game.getPlayer(message.author.name)
         player.actions = []
@@ -371,106 +340,66 @@ async def Discard(Game, message, data):
         await message.channel.send("You can only use the \"!discard\" command in your own chatroom!")
         return
     len_data = len(data)
-    """
-    if len_data == 2:
-        index = 0
-        cardtype = 0
-        if data[1] == 'red':
-            cardtype = 1
-        elif data[1] == 'green':
-            cardtype = 2
-        elif data[1] == 'blue':
-            cardtype = 3
-        if cardtype != 0:
-            for card in player.hand:
-                if card % 10 == cardtype:
-                    if index == 0:
-                        index = card
-                    else:
-                        await message.channel.send('You have more than one '+Colors[cardtype]+' card.')
-                        return
-            if index == 0:
-                await message.channel.send("You don't have any "+Colors[cardtype]+" cards.")
-                return
-        else:
-            if "murder" in data[1] or "knife" in data[1] or "kill" in data[1] or "stab" in data[1] or data[1] == '1' or data[1] == "10":
-                cardtype = 1
-            elif "tax" in data[1] or "coin" in data[1] or data[1] == '2' or data[1] == '20':
-                cardtype = 2
-            elif "guard" in data[1] or "shield" in data[1] or "protect" in data[1] or data[1] == '3' or data[1] == '30':
-                cardtype = 3
-            if cardtype != 0:
-                for card in player.hand:
-                    if int(card/10) == cardtype:
-                        if index == 0:
-                            index = card
-                        else:
-                            await message.channel.send('You have more than one '+Actions[cardtype]+' card.')
-                            return
-                if index == 0:
-                    await message.channel.send("You don't have any "+Actions[cardtype]+" cards.")
-                    return
-            else:
-                await message.channel.send('Unable to identify "'+data[1]+'" as a card.')
-                return
-        card_count = 0
-        for action in player.actions:
-            if action[1] == 0 and action[2] == index:
-                card_count += 1
-        if card_count >= player.hand.count(index):
-            await message.channel.send('You cannot discard any more '+Colors[index%10]+" "+Actions[int(index/10)]+' cards.')
-        else:
-            await message.channel.send('Discarding a '+Colors[index%10]+" "+Actions[int(index/10)]+" card.")
-            player.actions.append([player.ID,0,index])
-    #"""
     count = 1
     all_count = False
-    if len_data == 4:
-        if data[3] == 'all':
+    if len_data == 3:
+        if data[2] == 'all':
             all_count = True
         else:
             try:
-                count = abs(int(data[3]))
+                count = int(data[2])
+                if count <= 0:
+                    await message.channel.send('"'+data[2]+'" is not a valid number.')
+                    return
             except:
-                await message.channel.send('"'+data[3]+'" is not a valid number.')
+                await message.channel.send('"'+data[2]+'" is not a valid number.')
                 return
         len_data -= 1
-    if len_data == 3:
-        cardtype = 0
-        if data[1] == 'red':
-            cardtype = 1
-        elif data[1] == 'green':
-            cardtype = 2
-        elif data[1] == 'blue':
-            cardtype = 3
-        else:
-            await message.channel.send('Unable to identify "'+data[1]+'" as a color.')
+    if len_data == 2:
+        card = 0
+        if "murder" in data[1] or "knife" in data[1] or "kill" in data[1] or "stab" in data[1] or "red" in data[1] or data[1] == '1' or data[1] == "10":
+            card = 11
+        elif "tax" in data[1] or "coin" in data[1] or "green" in data[1] or data[1] == '2' or data[1] == '20':
+            card = 22
+        elif "guard" in data[1] or "shield" in data[1] or "protect" in data[1] or "blue" in data[1] or data[1] == '3' or data[1] == '30':
+            card = 33
+
+        if card == 0:
+            await message.channel.send('Unable to identify "'+data[1]+'" as a card.')
             return
-        if "murder" in data[2] or "knife" in data[2] or "kill" in data[2] or "stab" in data[2] or data[2] == '1' or data[2] == "10":
-            cardtype += 10
-        elif "tax" in data[2] or "coin" in data[2] or data[2] == '2' or data[2] == '20':
-            cardtype += 20
-        elif "guard" in data[2] or "shield" in data[2] or "protect" in data[2] or data[2] == '3' or data[2] == '30':
-            cardtype += 30
-        else:
-            await message.channel.send('Unable to identify "'+data[2]+'" as an action.')
+        elif card not in player.hand:
+            await message.channel.send("You don't have any "+Cards[card]+" cards.")
             return
+        
+        card_count = player.hand.count(card)
+        discard_count = 0
+        for action in player.actions:
+            if action[1] == 0 and action[2] == card:
+                discard_count += 1
+        if discard_count >= card_count:
+            await message.channel.send('You cannot discard any more '+Cards[card]+' cards.')
+            return
+
+        print(card_count, discard_count, len(player.actions), player.discard, count) 
         if all_count:
-            count = player.hand.count(cardtype)
-        for i in range(count):
-            discard_count = 0
-            for action in player.actions:
-                if action[1] == 0 and action[2] == cardtype:
-                    discard_count += 1
-            if discard_count >= player.hand.count(cardtype):
-                await message.channel.send('You cannot discard any more '+Colors[cardtype%10]+" "+Actions[int(cardtype/10)]+' cards.')
-            elif not Game.NIGHT and len(player.actions) >= player.discard:
-                await message.channel.send("You don't have to discard any more cards.")
-                break
-            else:
-                await message.channel.send('Discarding a '+Colors[cardtype%10]+" "+Actions[int(cardtype/10)]+" card.")
-                player.actions.append([player.ID,0,cardtype])
+            count = card_count - discard_count
+        elif not Game.NIGHT:
+            count = min(player.discard-len(player.actions),count)
+            
+        count = min(card_count-discard_count,count)
+
+        if count <= 0:
+            await message.channel.send("You don't have to discard any more cards.")
+            return
+        if count == 1:
+            await message.channel.send('Discarding a '+Cards[card]+" card.")
+            player.actions.append([player.ID,0,card])
+        else:
+            await message.channel.send('Discarding '+str(count)+' '+Cards[card]+" cards.")
+            for i in range(count):
+                player.actions.append([player.ID,0,card])
         await Show(Game, message, ['!show', 'actions'])
+
     else:
         await message.channel.send('Unrecognized use of the "!discard" command.')
         await message.channel.send(doc.help_discard)
@@ -573,12 +502,12 @@ async def Start(Game, client, message, data):
                         count = player.votes.count(vote)
                         report += player.discordID + " cast " + vote_report(Game, count, vote)
                         tally[vote] += count
-                        if player.votes[0] != player.votes[1]:
+                        if player.votes[0] != player.votes[1] and player.votes[1] != -1:
                             vote = player.votes[1]
                             count = player.votes.count(vote)
                             report += " and " + vote_report(Game, count, vote)
                             tally[vote] += count
-                        if player.votes[2] != player.votes[0] and player.votes[2] != player.votes[1]:
+                        if player.votes[2] != player.votes[0] and player.votes[2] != player.votes[1] and player.votes[2] != -1:
                             vote = player.votes[2]
                             count = player.votes.count(vote)
                             report += " and " + vote_report(Game, count, vote)
@@ -600,7 +529,7 @@ async def Start(Game, client, message, data):
                     report += '**Vote is Tied.**'
                 else:
                     report += '**'+Game.Players[index].discordID+' is Elected.**'
-                    Game.Players[index].electable = 0
+                    #Game.Players[index].electable = 0
                 await log_channel.send(report)
                 Game.startNight()
             else:
@@ -618,7 +547,7 @@ async def Start(Game, client, message, data):
 
                 for i in range(Game.pn):
                     target = Game.Players[i]
-                    health = 0
+                    health = 0 #Hmmm... maybe calibrate shields
                     stabbed = False
                     report = ""
                     for player in Game.Players:
@@ -644,7 +573,7 @@ async def Start(Game, client, message, data):
                             for i in range(count):
                                 report +=  Cards[30] + ' '
                             report += "on " + target.discordID + ".\n"
-                    if stabbed and target.shields > 0:
+                    if target.shields > 0:
                         report += target.discordID + " carried "
                         for i in range(target.shields):
                             report += Cards[30] + ' '
@@ -658,13 +587,13 @@ async def Start(Game, client, message, data):
                         if target.lives <= 0:
                             report += " and Dies"
                             target.dies()
-                    elif health >= 2:
-                        target.shields = health - 1
+                    elif health >= 1: # 2
+                        target.shields = health  # -1 : This is the line which normally reduces Shields
                         if stabbed:
                             report += target.discordID + " takes no damage and carries "
                         else:
                             report += target.discordID + " carries "
-                        for i in range(health-1):
+                        for i in range(target.shields):
                             report += Cards[30] + ' '
                         report += "to the next Night"
                     else:
@@ -706,12 +635,14 @@ async def Award(Game, message, data):
         len_data = len(data)
         if len_data == 2 or len_data == 3:
             player = Game.findPlayer(data[1])
+            player_channel = client.get_channel(Channels[player.chatroom])
             if player == '':
                 await message.channel.send("Could not find player \"" + data[1] + "\".")
                 return
             if player.lives <= 0:
                 if len_data == 2:
-                    await message.channel.send("Gave " + Cards[10] + " to " + player.name + ".")
+                    await player_channel.send("You've been awarded a " + Cards[10] + "!")
+                    await message.channel.send("Awarded Inspiration to " + player.name + ".")
                     player.giveCard(10)
                 else:
                     await message.channel.send("Cannot award multiple cards to Dead Players.")
@@ -726,7 +657,8 @@ async def Award(Game, message, data):
             return_message = ""
             for i in range(count):
                 return_message += Game.giveCard(player) + '\n'
-            await message.channel.send(return_message)
+            await player_channel.send(return_message)
+            await message.channel.send("Awarded Inspiration to " + player.name + ".")
         else:
             await message.channel.send('Unrecognized use of the "!award" command.')
     else:
@@ -899,9 +831,7 @@ class MyClient(discord.Client):
                     await Unjoin(Game, message, data)
                 elif data[0] == '!show':
                     await Show(Game, message, data)
-                    
-                elif data[0] == '!set':
-                    await Set(Game, message, data)
+
                 elif data[0] == '!play':
                     await Play(Game, message, data)
                 elif data[0] == '!unplay':

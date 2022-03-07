@@ -131,7 +131,7 @@ class NewGame():
             player.hand[0:handsize] = self.draw(handsize)
             player.handsize = handsize
     def new_deck(self):
-        self.Deck = [11,11,12,13,21,22,22,23,31,32,33,33]*5
+        self.Deck = [11,22,33]*20 #[11,11,12,13,21,22,22,23,31,32,33,33]*5
         self.decksize = 60
     def draw(self, num):
         result = ['']*num
@@ -150,7 +150,7 @@ class NewGame():
     def giveCard(self, player):
         card = self.drawcard()
         player.giveCard(card)
-        return "Gave " + Cards[card] + " to " + player.name + "."
+        return "You've been awarded a " + Cards[card] + "!"
     def save(self, filename):
         memory.save(filename, self)
     def load(self, filename):
@@ -175,6 +175,7 @@ class NewGame():
                 else:
                     if player.actions[i][1] == 0:
                         player.actions.pop(i)
+                        discards -= 1
             for action in player.actions:
                 if action[1] == 0:
                     player.discardCard(action[2])

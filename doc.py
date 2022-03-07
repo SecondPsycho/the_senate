@@ -49,14 +49,8 @@ help_set = """
 """
 
 help_play = """
-    !play [<color>] <ability> [[on] <target>] [<num>]
+    !play <ability> [[on] <target>] [<num>]
         Play an ability card.
-        [<color>]:
-            Entirely unnecessarily. Will use your set color by Default.
-        <color> can be:
-            'red'
-            'green'
-            'blue'
         <ability> can be:
             'murder' or 'knife' : play murder card.
             'tax' or 'coin' : play tax card.
@@ -91,12 +85,8 @@ help_unplay = """
 """
 
 help_discard = """
-    !discard <color> <ability> [<num>]
+    !discard <ability> [<num>]
         Mark a card to be discarded.
-        <color> can be:
-            'red' : the card is red.
-            'green' : the card is green.
-            'blue' : the card is blue.
         <ability> can be:
             'murder' or 'knife' : it's a murder card.
             'tax' or 'coin' : it's a tax card.
