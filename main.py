@@ -2,6 +2,9 @@ import discord
 from data import *
 import doc
 
+#Settings
+SHIELD_DEPRICATION = 1              # 1 is on, 0 is off
+
 #Small Helper Functions
 def clean_up(data):
     data = data.split('\n')
@@ -242,7 +245,7 @@ async def Play(Game, message, data):
         return
     len_data = len(data)
 
-    if data[2] == 'on':
+    if len_data > 2 and data[2] == 'on':
         data.pop(2)
         len_data -= 1
     count = 1
@@ -513,6 +516,7 @@ async def Start(Game, client, message, data):
                             report += " and " + vote_report(Game, count, vote)
                             tally[vote] += count
                         report += '.\n'
+                    #DEV
                 await log_channel.send(report)
                 high = 0
                 index = -1
@@ -538,6 +542,22 @@ async def Start(Game, client, message, data):
             master_channel = client.get_channel(Channels['bot-commands'])
             if Game.NIGHT:
                 Game.save('night')
+
+                #Handle AFK Players
+                for player in Game.Players:
+                    if len(player.actions) == 0:
+                        card = 0
+                        if 22 in player.hand:
+                            card = 22
+                        elif 33 in player.hand:
+                            card = 33
+                        if card != 0:
+                            player.actions.append([player.ID,card,player.ID])
+                            for i in range(player.hand.count(card) -1 ):
+                                player.actions.append([player.ID,0,card])
+                                player.actions.append([player.ID,card,player.ID])
+
+                #Send the Messages
                 await message.channel.send("Starting Day Cycle.")
                 await log_channel.send('The Day Cycle has Begun.')
                 report = "Here's the Nightly Report:\n"
@@ -550,6 +570,8 @@ async def Start(Game, client, message, data):
                     health = 0 #Hmmm... maybe calibrate shields
                     stabbed = False
                     report = ""
+                    
+                    #Apply Actions
                     for player in Game.Players:
                         count = 0
                         for action in player.actions:
@@ -588,7 +610,7 @@ async def Start(Game, client, message, data):
                             report += " and Dies"
                             target.dies()
                     elif health >= 1: # 2
-                        target.shields = health  # -1 : This is the line which normally reduces Shields
+                        target.shields = health - SHIELD_DEPRICATION
                         if stabbed:
                             report += target.discordID + " takes no damage and carries "
                         else:
