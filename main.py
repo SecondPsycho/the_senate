@@ -26,10 +26,11 @@ def one_line(data):
 #Message Class
 #Takes data from the client and puts it in a form I can better understand and manipulate
 class Message():
-    def __init__(self, pchannel, pauthor, pcontent):
+    def __init__(self, pchannel, pauthor, pcontent, pname):
         self.channel = pchannel
         self.author = pauthor
         self.content = pcontent
+        self.authorName = pname
 
 #"""
 #Individual Command Functions
@@ -99,14 +100,14 @@ async def Join(Game, message, data):
     len_data = len(data)
     if len_data == 1:
         if Game.newPlayer(message):
-            await message.channel.send('Thank you! Player '+message.author.name+' has joined the game in the '+message.channel.name+' chatroom.')
+            await message.channel.send('Thank you! Player '+message.authorName+' has joined the game in the '+message.channel.name+' chatroom.')
         else:
             await message.channel.send("You've already joined the game.")
     elif len_data == 2 and data[1] == 'here':
         if Game.newPlayer(message):
-            await message.channel.send('Thank you! Registering Player "'+message.author.name+'" in the '+message.channel.name+' chatroom.')
+            await message.channel.send('Thank you! Registering Player "'+message.authorName+'" in the '+message.channel.name+' chatroom.')
         else:
-            player = Game.getPlayer(message.author.name)
+            player = Game.getPlayer(message.authorName)
             if player.chatroom != message.channel.name:
                 player.chatroom = message.channel.name
                 await message.channel.send('This is now your chatroom.')
@@ -137,7 +138,7 @@ async def Unjoin(Game, message, data):
         return
     len_data = len(data)
     if len_data == 1:
-        if Game.removePlayer(message.author.name):
+        if Game.removePlayer(message.authorName):
             await message.channel.send("Sorry to see you go. Bye!")
         else:
             await message.channel.send("You were already out of the game.")
@@ -160,7 +161,7 @@ async def Show(Game, message, data):
         await message.channel.send("You can only use this command once the game has started.")
         return
     if len(data) == 2:
-        player = Game.getPlayer(message.author.name)
+        player = Game.getPlayer(message.authorName)
         if player != '':
             if message.channel.name != player.chatroom:
                 await message.channel.send('You can only use the "!show" command in your own chatroom!')
@@ -248,7 +249,7 @@ async def Play(Game, message, data):
     if not Game.NIGHT:
         await message.channel.send("You can only use this command at night.")
         return
-    player = Game.getPlayer(message.author.name)
+    player = Game.getPlayer(message.authorName)
     if player.chatroom != message.channel.name:
         await message.channel.send("You can only use the \"!play\" command in your own chatroom!")
         return
@@ -317,7 +318,7 @@ async def Unplay(Game, message, data):
         return
     len_data = len(data)
     if len_data == 1:
-        player = Game.getPlayer(message.author.name)
+        player = Game.getPlayer(message.authorName)
         if len(player.actions) == 0:
             await message.channel.send('You have no actions listed.')
         else:
@@ -325,11 +326,11 @@ async def Unplay(Game, message, data):
             player.actions.pop(-1)
             await Show(Game, message, ['!show', 'actions'])
     elif len_data == 2 and data[1] == 'all':
-        player = Game.getPlayer(message.author.name)
+        player = Game.getPlayer(message.authorName)
         player.actions = []
         await message.channel.send('All actions have been cleared.')
     elif len_data == 2:
-        player = Game.getPlayer(message.author.name)
+        player = Game.getPlayer(message.authorName)
         try:
             count = min(abs(int(data[1])), len(player.actions))
             for i in range(count):
@@ -347,7 +348,7 @@ async def Discard(Game, message, data):
     if not Game.ON:
         await message.channel.send("You can only use this command once the game has started.")
         return
-    player = Game.getPlayer(message.author.name)
+    player = Game.getPlayer(message.authorName)
     if player.chatroom != message.channel.name:
         await message.channel.send("You can only use the \"!discard\" command in your own chatroom!")
         return
@@ -440,7 +441,7 @@ async def Vote(Game, message, data):
     if Game.NIGHT:
         await message.channel.send("You can only use this command during the day.")
         return
-    player = Game.getPlayer(message.author.name)
+    player = Game.getPlayer(message.authorName)
     if not player.electable:
         if player.lives <= 0:
             await message.channel.send("Dead players can't vote.")
@@ -851,9 +852,13 @@ class MyClient(discord.Client):
                     await message.channel.send("Seems you're not listed as a Player... contact Gen_CAT if you feel this should be different.")
                     return
                 
-                myMessage = Message(message.channel, message.author, message.content)
-
+                myMessage = Message(message.channel, message.author, message.content, message.author.name)
                 data = clean_up(myMessage.content)
+
+                if data[0] == '!execute':
+                    myMessage.authorName = Game.findPlayer(data[1]).name
+                    data = data[2:]
+
                 if data[0] == '!help':
                     await Help(Game, myMessage, data)
                 elif data[0] == '!draw':
