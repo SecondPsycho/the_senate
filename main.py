@@ -855,7 +855,7 @@ class MyClient(discord.Client):
                 myMessage = Message(message.channel, message.author, message.content, message.author.name)
                 data = clean_up(myMessage.content)
 
-                if data[0] == '!execute':
+                if data[0] == '!execute' and message.author.id == NARRATOR:
                     myMessage.authorName = Game.findPlayer(data[1]).name
                     data = data[2:]
 
