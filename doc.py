@@ -37,6 +37,7 @@ help_show = """
             !show hand
 """
 
+#This command no longer implemented
 help_set = """
     !set color <color>
         Choose which color of cards you want to play tonight.
@@ -60,18 +61,18 @@ help_play = """
         [on]:
             optional.
         <target> can be:
-            Any Player's username.
+            Any Player's username or nickname.
             'me' or 'myself' : Choose yourself as Target.
         [<num>] can be:
             A number: specify the number of times to repeat this command.
             'all' : play all cards available.
         Examples:
             !play tax
-            !play blue tax
             !play murder on gen_cat
-            !play green knife on gen_cat
+            !play knife on gen_cat
             !play """+Cards[33]+""" on me
             !play shield 2
+            !play tax on gen_cat all
 """
 
 help_unplay = """
@@ -88,15 +89,16 @@ help_discard = """
     !discard <ability> [<num>]
         Mark a card to be discarded.
         <ability> can be:
-            'murder' or 'knife' : it's a murder card.
-            'tax' or 'coin' : it's a tax card.
-            'guard' or 'shield' : it's a guard card.
+            'murder' or 'knife' or 'red' : it's a murder card.
+            'tax' or 'coin' or 'green' : it's a tax card.
+            'guard' or 'shield' or 'blue' : it's a guard card.
         [<num>] can be:
             A number: specify the number of times to repeat this command.
             'all' : discard all cards available.
         Examples:
-            !discard red tax
-            !discard blue shield
+            !discard tax
+            !discard shield 2
+            !discard red all
 """
 
 help_vote = """
@@ -146,7 +148,7 @@ help_plug = """
 Use '!help help' for instructions on reading help pages."""
 
 help_JOIN = help_join+help_unjoin+help_draw+help_plug
-help_NIGHT1 = help_show+help_set+help_discard
+help_NIGHT1 = help_show+help_discard
 help_NIGHT2 = help_play+help_unplay+help_plug
 help_DAY = help_show+help_vote+help_discard+help_plug
 help_HELP = help_man+help_help
