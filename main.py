@@ -1,9 +1,13 @@
 import discord
+from discord.abc import PrivateChannel
 from data import *
 import doc
 
 #Settings
 SHIELD_DEPRICATION = 1              # 1 is on, 0 is off
+
+NARRATOR = 249679490429485057
+ME = 812330570456760340
 
 #Small Helper Functions
 def clean_up(data):
@@ -19,8 +23,13 @@ def one_line(data):
     data = data.split('\n')
     return data[0]
 
-NARRATOR = 249679490429485057
-ME = 812330570456760340
+#Message Class
+#Takes data from the client and puts it in a form I can better understand and manipulate
+class Message():
+    def __init__(self, pchannel, pauthor, pcontent):
+        self.channel = pchannel
+        self.author = pauthor
+        self.content = pcontent
 
 #"""
 #Individual Command Functions
@@ -383,7 +392,7 @@ async def Discard(Game, message, data):
             await message.channel.send('You cannot discard any more '+Cards[card]+' cards.')
             return
 
-        print(card_count, discard_count, len(player.actions), player.discard, count) 
+        #print(card_count, discard_count, len(player.actions), player.discard, count) 
         if all_count:
             count = card_count - discard_count
         elif not Game.NIGHT:
@@ -828,7 +837,7 @@ class MyClient(discord.Client):
                 return
         elif message.content.startswith('!'):
             print(message.author.name,':\n   ',message.content)
-            if 1==1: #try:
+            try: #if 1 == 1:
                 player = Game.getPlayer(message.author.name)
                 if player != '':
                     if player.nick != message.author.nick:
@@ -842,48 +851,50 @@ class MyClient(discord.Client):
                     await message.channel.send("Seems you're not listed as a Player... contact Gen_CAT if you feel this should be different.")
                     return
                 
-                data = clean_up(message.content)
+                myMessage = Message(message.channel, message.author, message.content)
+
+                data = clean_up(myMessage.content)
                 if data[0] == '!help':
-                    await Help(Game, message, data)
+                    await Help(Game, myMessage, data)
                 elif data[0] == '!draw':
-                    await Draw(Game, message, data)
+                    await Draw(Game, myMessage, data)
                 elif data[0] == '!join':
-                    await Join(Game, message, data)
+                    await Join(Game, myMessage, data)
                 elif data[0] == '!unjoin':
-                    await Unjoin(Game, message, data)
+                    await Unjoin(Game, myMessage, data)
                 elif data[0] == '!show':
-                    await Show(Game, message, data)
+                    await Show(Game, myMessage, data)
 
                 elif data[0] == '!play':
-                    await Play(Game, message, data)
+                    await Play(Game, myMessage, data)
                 elif data[0] == '!unplay':
-                    await Unplay(Game, message, data)
+                    await Unplay(Game, myMessage, data)
                 elif data[0] == '!discard':
-                    await Discard(Game, message, data)
+                    await Discard(Game, myMessage, data)
 
                 elif data[0] == '!vote':
-                    await Vote(Game, message, data)
+                    await Vote(Game, myMessage, data)
                 
                 elif data[0] == '!start':
-                    await Start(Game, self, message, data)
+                    await Start(Game, self, myMessage, data)
                 elif data[0] == '!award':
-                    await Award(Game, message, data)
+                    await Award(Game, myMessage, data)
                 elif data[0] == '!save':
-                    await Save(Game, message, data)
+                    await Save(Game, myMessage, data)
                 elif data[0] == '!load':
-                    await Load(Game, message, data)
+                    await Load(Game, myMessage, data)
                 elif data[0] == '!report':
-                    await Report(Game, message, data)
+                    await Report(Game, myMessage, data)
                 elif data[0] == '!control':
-                    await Control(Game, message, data)
+                    await Control(Game, myMessage, data)
                 elif data[0] == '!exit':
-                    await Exit(Game, message, data)
+                    await Exit(Game, myMessage, data)
                 elif data[0] == '!test':
-                    await Test(Game, message, data, client)
+                    await Test(Game, myMessage, data, client)
                 else:
-                    await message.channel.send("Unrecognized Command.")
-                    await Help(Game, message, data)
-            else: #except:
+                    await myMessage.channel.send("Unrecognized Command.")
+                    await Help(Game, myMessage, data)
+            except: #else:
                 if message.content == '!exit' and message.author.id == NARRATOR:
                     exit(0)
                 await message.channel.send("Oops. Something went wrong :(")
