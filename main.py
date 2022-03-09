@@ -577,7 +577,7 @@ async def Start(Game, client, message, data):
 
                 for i in range(Game.pn):
                     target = Game.Players[i]
-                    health = 0 #Hmmm... maybe calibrate shields
+                    health = 0
                     stabbed = False
                     report = ""
                     
@@ -618,8 +618,8 @@ async def Start(Game, client, message, data):
                         report += target.discordID + " takes " + str(-health) + " damage"
                         if target.lives <= 0:
                             report += " and Dies"
-                            target.dies()
-                    elif health >= 1: # 2
+                            
+                    elif health >= 1 + SHIELD_DEPRICATION:
                         target.shields = health - SHIELD_DEPRICATION
                         if stabbed:
                             report += target.discordID + " takes no damage and carries "
@@ -635,8 +635,7 @@ async def Start(Game, client, message, data):
                     if report != "**":
                         report += ".**\n.\n"
                         await send_large_message(log_channel, report, ".\n")
-                    
-                
+
                 Game.startDay()
             else:
                 await message.channel.send('It is already day.')
@@ -899,6 +898,7 @@ class MyClient(discord.Client):
                 else:
                     await myMessage.channel.send("Unrecognized Command.")
                     await Help(Game, myMessage, data)
+
             except: #else:
                 if message.content == '!exit' and message.author.id == NARRATOR:
                     exit(0)

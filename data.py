@@ -185,6 +185,9 @@ class NewGame():
                     target.giveCard(self.drawcard())
                     target.giveCard(self.drawcard())
             player.actions = []
+        for player in self.Players:
+            if player.lives <= 0:
+                player.dies()
         return True
     def startNight(self):
         if self.NIGHT:
@@ -275,10 +278,15 @@ class Player():
             cards += '\n'
         return cards
     def dies(self):
-        self.electable = 0
         self.color = 0
-        self.handsize = 2
         self.lives = 0
+        self.shields = 0
+
+        self.discard = 0
+        self.electable = 0
+
+        self.votes = [-1,-1,-1]
+        self.handsize = 2
         self.hand = [0]*20
         self.hand[0] = 10
         self.hand[1] = 10
