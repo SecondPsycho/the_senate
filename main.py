@@ -1,10 +1,11 @@
 import discord
 from discord.abc import PrivateChannel
+from discord.ext import commands
 from data import *
 import doc
 
 #Settings
-SHIELD_DEPRICATION = 1              # 1 is on, 0 is off
+SHIELD_DEPRICATION = 0              # 1 is on, 0 is off
 
 NARRATOR = 249679490429485057
 ME = 812330570456760340
@@ -600,7 +601,7 @@ async def Start(Game, client, message, data):
                             if action[1] in [30,31,32,33] and action[2] == target.ID:
                                 health += 1
                                 count += 1
-                        if count >= 1 and stabbed:
+                        if count >= 1: #and stabbed: #Report ALL shields
                             report += player.discordID+ " played "
                             for i in range(count):
                                 report +=  Cards[30] + ' '
@@ -821,97 +822,115 @@ async def Test(Game, message, data, client):
         else:
             await message.channel.send(player.name+' has no listed DiscordID.')
 
-class MyClient(discord.Client):
-    async def on_ready(self):
-        print('Logged on as {0}!'.format(self.user))
-        #musings = self.get_channel(Channels['bot-commands'])
-        musings = self.get_channel(Channels['bot-tests'])
-        await musings.send('Bot is Online.')
-        try:
-            Game.load('tmp')
-            await musings.send('Loaded "tmp.txt"')
-        except:
-            await musings.send('Game Loading Failed. Loaded a New Game.')
-    async def on_message(self, message):
-        if message.author == client.user:
-                return
-        elif message.content.startswith('!'):
-            print(message.author.name,':\n   ',message.content)
-            try: #if 1 == 1:
-                player = Game.getPlayer(message.author.name)
-                if player != '':
-                    if player.nick != message.author.nick:
-                        #print("Updated Nickname.", player.nick, str(message.author.nick))
-                        player.nick = str(message.author.nick)
-                    if player.disc == ' ':
-                        player.disc = message.author.discriminator
-                    if player.discordID[0:2] != "<@!":
-                        player.discordID = "<@!" + str(message.author.id) + ">"
-                elif Game.ON and message.author.id != NARRATOR:
-                    await message.channel.send("Seems you're not listed as a Player... contact Gen_CAT if you feel this should be different.")
-                    return
-                
-                myMessage = Message(message.channel, message.author, message.content, message.author.name)
-                data = clean_up(myMessage.content)
-
-                if data[0] == '!execute' and message.author.id == NARRATOR:
-                    myMessage.authorName = Game.findPlayer(data[1]).name
-                    data = data[2:]
-
-                if data[0] == '!help':
-                    await Help(Game, myMessage, data)
-                elif data[0] == '!draw':
-                    await Draw(Game, myMessage, data)
-                elif data[0] == '!join':
-                    await Join(Game, myMessage, data)
-                elif data[0] == '!unjoin':
-                    await Unjoin(Game, myMessage, data)
-                elif data[0] == '!show':
-                    await Show(Game, myMessage, data)
-
-                elif data[0] == '!play':
-                    await Play(Game, myMessage, data)
-                elif data[0] == '!unplay':
-                    await Unplay(Game, myMessage, data)
-                elif data[0] == '!discard':
-                    await Discard(Game, myMessage, data)
-
-                elif data[0] == '!vote':
-                    await Vote(Game, myMessage, data)
-                
-                elif data[0] == '!start':
-                    await Start(Game, self, myMessage, data)
-                elif data[0] == '!award':
-                    await Award(Game, myMessage, data)
-                elif data[0] == '!save':
-                    await Save(Game, myMessage, data)
-                elif data[0] == '!load':
-                    await Load(Game, myMessage, data)
-                elif data[0] == '!report':
-                    await Report(Game, myMessage, data)
-                elif data[0] == '!control':
-                    await Control(Game, myMessage, data)
-                elif data[0] == '!exit':
-                    await Exit(Game, myMessage, data)
-                elif data[0] == '!test':
-                    await Test(Game, myMessage, data, client)
-                else:
-                    await myMessage.channel.send("Unrecognized Command.")
-                    await Help(Game, myMessage, data)
-
-            except: #else:
-                if message.content == '!exit' and message.author.id == NARRATOR:
-                    exit(0)
-                await message.channel.send("Oops. Something went wrong :(")
-                print("There was a Problem with input:",message.content)
-            Game.save('tmp')
-
-
 Game = NewGame()
+
+#Intents
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+#client = commands.Bot(command_prefix=',', intents = intents)
 
 File = open('token.txt', 'r')
 token = File.readline()
 File.close()
 
-client = MyClient()
+print(intents)
+
+client = discord.Client(intents=intents)
+
+#class MyClient():
+@client.event
+async def on_ready():
+    global client
+    self = client
+    print('Logged on as {0}!'.format(self.user))
+    #musings = self.get_channel(Channels['bot-commands'])
+    musings = self.get_channel(Channels['bot-tests'])
+    await musings.send('Bot is Online.')
+    try:
+        Game.load('tmp')
+        await musings.send('Loaded "tmp.txt"')
+    except:
+        await musings.send('Game Loading Failed. Loaded a New Game.')
+
+MESSAGE = ''
+
+@client.event
+async def on_message(message):
+    print(message.author, message.content)
+    global client
+    self = client
+    global MESSAGE
+    MESSAGE = message
+    if message.author == client.user:
+            return
+    elif message.content.startswith('!'):
+        print(message.author.name,':\n   ',message.content)
+        try: #if 1 == 1:
+            player = Game.getPlayer(message.author.name)
+            if player != '':
+                if player.nick != message.author.nick:
+                    #print("Updated Nickname.", player.nick, str(message.author.nick))
+                    player.nick = str(message.author.nick)
+                if player.disc == ' ':
+                    player.disc = message.author.discriminator
+                if player.discordID[0:2] != "<@!":
+                    player.discordID = "<@!" + str(message.author.id) + ">"
+            elif Game.ON and message.author.id != NARRATOR:
+                await message.channel.send("Seems you're not listed as a Player... contact Gen_CAT if you feel this should be different.")
+                return
+            
+            myMessage = Message(message.channel, message.author, message.content, message.author.name)
+            data = clean_up(myMessage.content)
+
+            if data[0] == '!execute' and message.author.id == NARRATOR:
+                myMessage.authorName = Game.findPlayer(data[1]).name
+                data = data[2:]
+
+            if data[0] == '!help':
+                await Help(Game, myMessage, data)
+            elif data[0] == '!draw':
+                await Draw(Game, myMessage, data)
+            elif data[0] == '!join':
+                await Join(Game, myMessage, data)
+            elif data[0] == '!unjoin':
+                await Unjoin(Game, myMessage, data)
+            elif data[0] == '!show':
+                await Show(Game, myMessage, data)
+            elif data[0] == '!play':
+                await Play(Game, myMessage, data)
+            elif data[0] == '!unplay':
+                await Unplay(Game, myMessage, data)
+            elif data[0] == '!discard':
+                await Discard(Game, myMessage, data)
+            elif data[0] == '!vote':
+                await Vote(Game, myMessage, data)
+             
+            elif data[0] == '!start':
+                await Start(Game, self, myMessage, data)
+            elif data[0] == '!award':
+                await Award(Game, myMessage, data)
+            elif data[0] == '!save':
+                await Save(Game, myMessage, data)
+            elif data[0] == '!load':
+                await Load(Game, myMessage, data)
+            elif data[0] == '!report':
+                await Report(Game, myMessage, data)
+            elif data[0] == '!control':
+                await Control(Game, myMessage, data)
+            elif data[0] == '!exit':
+                await Exit(Game, myMessage, data)
+            elif data[0] == '!test':
+                await Test(Game, myMessage, data, client)
+            else:
+                await myMessage.channel.send("Unrecognized Command.")
+                await Help(Game, myMessage, data)
+
+        except: #else:
+            if message.content == '!exit' and message.author.id == NARRATOR:
+                exit(0)
+            await message.channel.send("Oops. Something went wrong :(")
+            print("There was a Problem with input:",message.content)
+        Game.save('tmp')
+
 client.run(token)
